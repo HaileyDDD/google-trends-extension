@@ -31,7 +31,7 @@ const mockDataSets = {
         description: "国家公务员考试成绩查询"
       },
       {
-        title: { query: "���耀新英雄" },
+        title: { query: "英雄" },
         formattedTraffic: "250,000+",
         relatedQueries: ["技能绍", "攻略", "出装"],
         description: "手游新角色发布"
@@ -67,7 +67,7 @@ const mockDataSets = {
       {
         title: { query: "元旦假期" },
         formattedTraffic: "450,000+",
-        relatedQueries: ["旅游攻略", "门预订", "酒店预订"],
+        relatedQueries: ["旅游攻略", "门��订", "酒店订"],
         description: "元旦假期出行相关搜索"
       }
     ],
@@ -239,7 +239,7 @@ const tiktokDataSets = {
   }
 };
 
-// 初始化工具
+// 初始���工具
 const rateLimiter = new RateLimiter();
 const cacheManager = new CacheManager(chrome.storage.local);
 
@@ -285,7 +285,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-// 添加日志工具
+// 添加日志��具
 const logger = {
   debug: (...args) => console.debug('[Trends]', ...args),
   info: (...args) => console.info('[Trends]', ...args),
@@ -536,6 +536,23 @@ async function fetchTrends(params = {}) {
       }));
     }
 
+    // 验证数据
+    const validationResults = await validateTrendsData(data, region);
+    
+    // 过滤掉无效数据
+    const validTrends = data.filter((trend, index) => 
+      validationResults[index].isValid
+    );
+
+    // 记录验证结果
+    console.log('数据验证结果:', validationResults);
+    
+    if (validTrends.length < data.length) {
+      console.warn(`过滤掉 ${data.length - validTrends.length} 条无效数据`);
+    }
+
+    data = validTrends;
+
     // 保存到存储
     if (data.length > 0) {
       await chrome.storage.local.set({ 
@@ -581,4 +598,139 @@ function formatTraffic(count) {
   }
   return `${count}+`;
 }
+
+// 扩展分类关键词
+const CATEGORIES = {
+  '科技': [
+    'AI', '人工智能', '手机', '电脑', 'iPhone', 'Android', '软件', '应用',
+    'tech', 'technology', 'smartphone', 'computer', 'software', 'app'
+  ],
+  '娱乐': [
+    '电影', '音乐', '游戏', '视频', '直播', '演唱会', '综艺',
+    'movie', 'music', 'game', 'video', 'live', 'concert', 'show'
+  ],
+  '体育': [
+    '足球', '篮球', '网球', '比赛', '联赛', '冠军', 'NBA', '世界杯',
+    'football', 'basketball', 'tennis', 'match', 'league', 'champion'
+  ],
+  '商业': [
+    '股票', '经济', '企业', '市场', '投资', '金融', '贸易',
+    'stock', 'economy', 'business', 'market', 'investment', 'finance'
+  ],
+  '社会': [
+    '政治', '教育', '医疗', '环境', '社会', '事件', '新闻',
+    'politics', 'education', 'medical', 'environment', 'society', 'news'
+  ],
+  '生活': [
+    '美食', '旅游', '购物', '时尚', '健康', '生活', '家居',
+    'food', 'travel', 'shopping', 'fashion', 'health', 'lifestyle'
+  ],
+  '文化': [
+    '艺术', '文学', '历史', '展览', '节日', '传统',
+    'art', 'literature', 'history', 'exhibition', 'festival', 'tradition'
+  ]
+};
+
+// 改进分类函数
+async function categorizeKeyword(keyword, description) {
+  const text = `${keyword} ${description}`.toLowerCase();
+  
+  for (const [category, keywords] of Object.entries(CATEGORIES)) {
+    if (keywords.some(k => text.includes(k.toLowerCase()))) {
+      return category;
+    }
+  }
+  
+  return '其他';
+}
+
+// 修改数据处理部分
+async function processGoogleTrendsData(trend, region) {
+  const query = trend.title.query || trend.title;
+  const description = trend.articles?.[0]?.snippet || trend.title.query;
+  const category = await categorizeKeyword(query, description);
+
+  return {
+    title: { 
+      query,
+      translation: await translateText(query, region === 'CN' ? 'en' : 'zh-CN')
+    },
+    category,
+    formattedTraffic: trend.formattedTraffic || '100,000+',
+    relatedQueries: await Promise.all(
+      (trend.relatedQueries?.rankedList?.[0]?.rankedKeyword?.map(k => k.query) || [])
+        .map(async q => ({
+          query: q,
+          translation: await translateText(q, region === 'CN' ? 'en' : 'zh-CN')
+        }))
+    ),
+    articles: trend.articles?.map(article => ({
+      title: article.title,
+      snippet: article.snippet,
+      url: article.url
+    })) || [],
+    description,
+    descriptionTranslation: await translateText(description, region === 'CN' ? 'en' : 'zh-CN'),
+    timestamp: Date.now(),
+    platform: 'google',
+    region
+  };
+}
+
+// 添加数据验证函数
+async function validateTrendsData(trends, region) {
+  // 验证结果数组
+  const validationResults = await Promise.all(trends.map(async trend => {
+    try {
+      // 1. 直接验证 Google Trends 链接
+      const trendsUrl = `https://trends.google.com/trends/explore?geo=${region}&q=${encodeURIComponent(trend.title.query)}`;
+      const response = await fetch(trendsUrl);
+      const isValidTrend = response.ok;
+
+      // 2. 验证搜索量
+      const searchVolume = parseInt(trend.formattedTraffic.replace(/[^0-9]/g, ''));
+      const hasReasonableVolume = searchVolume > 0 && searchVolume < 10000000;
+
+      // 3. 验证时间戳
+      const isRecentTimestamp = (Date.now() - trend.timestamp) < 24 * 60 * 60 * 1000; // 24小时内
+
+      // 4. 验证相关内容
+      const hasRelatedContent = trend.relatedQueries.length > 0 || trend.articles.length > 0;
+
+      return {
+        keyword: trend.title.query,
+        isValid: isValidTrend && hasReasonableVolume && isRecentTimestamp && hasRelatedContent,
+        validationDetails: {
+          validTrend: isValidTrend,
+          reasonableVolume: hasReasonableVolume,
+          recentTimestamp: isRecentTimestamp,
+          hasRelatedContent
+        }
+      };
+    } catch (error) {
+      console.error(`验证失败 (${trend.title.query}):`, error);
+      return {
+        keyword: trend.title.query,
+        isValid: false,
+        error: error.message
+      };
+    }
+  }));
+
+  return validationResults;
+}
+
+// 添加到 background.js 的顶部
+chrome.action.onClicked.addListener(function(tab) {
+  // 当用户点击扩展图标时，打开侧边栏
+  chrome.sidePanel.open({ windowId: tab.windowId });
+});
+
+// 确保侧边栏在所有页面都可用
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.sidePanel.setOptions({
+    enabled: true,
+    path: 'public/popup.html'
+  });
+});
   

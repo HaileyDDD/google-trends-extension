@@ -1,64 +1,67 @@
 console.log('=== POPUP.JS LOADED ===');
 
 document.addEventListener('DOMContentLoaded', async () => {
-  alert('弹出窗口已加载');
+  // 移除弹窗提示
+  // alert('弹出窗口已加载');
   console.log('=== DOM CONTENT LOADED ===');
-  const fetchButton = document.getElementById('fetchButton');
-  const loadingIndicator = document.querySelector('.loading-indicator');
-  const searchInput = document.getElementById('searchInput');
   
-  // 初始加载已保存的数据
-  console.log('开始加载已保存数据...');
+  // 初始化界面
+  initializeUI();
+  
+  // 初始加载数据
   await loadSavedTrends();
-  
-  // 添加搜索功能
-  searchInput.addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    filterTrends(searchTerm);
-  });
-  
-  // 添加查询按钮事件
-  fetchButton.addEventListener('click', async () => {
-    try {
-      showLoading(true); // 显示加载指示器
-      
-      const params = {
-        platform: document.getElementById('platform').value,
-        region: document.getElementById('region').value,
-        timeRange: document.getElementById('timeRange').value
-      };
-      
-      console.log('发送获取趋势请求:', params);
-      
-      const response = await chrome.runtime.sendMessage({ 
-        action: 'fetchTrends',
-        params
-      });
-      
-      console.log('获取趋势响应:', response);
-      
-      if (response.success) {
-        await loadSavedTrends();
-      } else {
-        throw new Error(response.error || '获取数据失败');
-      }
-    } catch (error) {
-      console.error('获取数据失败:', error);
-      showError(error.message || '获取数据失败，请稍后重试');
-    } finally {
-      showLoading(false); // 隐藏加载指示器
-    }
-  });
-
-  // 排序功能
-  document.getElementById('sortBy').addEventListener('change', (e) => {
-    const sortBy = e.target.value;
-    sortTrends(sortBy);
-  });
-
-  document.getElementById('exportBtn').addEventListener('click', exportKeywordData);
-  document.getElementById('showAllBtn').addEventListener('click', showFullList);
 });
+
+function initializeUI() {
+  // 设置窗口样式
+  document.body.style.width = '400px';
+  document.body.style.height = '100vh';
+  
+  // 初始化事件监听
+  const fetchButton = document.getElementById('fetchButton');
+  const searchInput = document.getElementById('searchInput');
+  const sortSelect = document.getElementById('sortBy');
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  const exportJsonBtn = document.getElementById('exportJsonBtn');
+  
+  // 添加事件监听器
+  fetchButton?.addEventListener('click', handleFetchClick);
+  searchInput?.addEventListener('input', handleSearch);
+  sortSelect?.addEventListener('change', handleSort);
+  exportCsvBtn?.addEventListener('click', exportKeywordData);
+  exportJsonBtn?.addEventListener('click', exportToJSON);
+}
+
+// 处理获取数据的点击事件
+async function handleFetchClick() {
+  try {
+    showLoading(true);
+    
+    const params = {
+      platform: document.getElementById('platform').value,
+      region: document.getElementById('region').value,
+      timeRange: document.getElementById('timeRange').value
+    };
+    
+    console.log('发送获取趋势请求:', params);
+    
+    const response = await chrome.runtime.sendMessage({ 
+      action: 'fetchTrends',
+      params
+    });
+    
+    if (response.success) {
+      await loadSavedTrends();
+    } else {
+      throw new Error(response.error || '获取数据失败');
+    }
+  } catch (error) {
+    console.error('获取数据失败:', error);
+    showError(error.message);
+  } finally {
+    showLoading(false);
+  }
+}
 
 async function loadSavedTrends() {
   console.log('执行 loadSavedTrends...');
@@ -185,22 +188,33 @@ function exportKeywordData() {
   if (!window.allTrends) return;
   
   const csvContent = [
-    ['关键词', '流量情况', '发布时间', '相关查询', '描述'],
-    ...window.allTrends.map(trend => [
-      trend.keyword,
-      trend.traffic,
-      formatDate(trend.timestamp),
-      trend.relatedQueries.join('; '),
-      trend.description || ''
-    ])
-  ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    ['关键词', '英文翻译', '类别', '流量情况', '发布时间', '相关搜索', '相关搜索翻译', '描述', '描述翻译', 'Google Trends 链接'],
+    ...window.allTrends.map(trend => {
+      const trendsUrl = `https://trends.google.com/trends/explore?geo=${trend.region || 'US'}&q=${encodeURIComponent(trend.title.query)}`;
+      
+      return [
+        trend.title.query,
+        trend.title.translation || '',
+        trend.category || '其他',
+        trend.formattedTraffic,
+        formatDate(trend.timestamp),
+        trend.relatedQueries.map(q => q.query).join('; '),
+        trend.relatedQueries.map(q => q.translation).join('; '),
+        trend.description,
+        trend.descriptionTranslation || '',
+        trendsUrl
+      ];
+    })
+  ].map(row => row.map(cell => `"${cell || ''}"`).join(',')).join('\n');
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // 添加 BOM 以支持中文
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   
   const a = document.createElement('a');
   a.href = url;
-  a.download = `google-trends-${new Date().toISOString().split('T')[0]}.csv`;
+  a.download = `google-trends-${formatDateForFilename(new Date())}.csv`;
   a.click();
   
   URL.revokeObjectURL(url);
@@ -212,7 +226,7 @@ window.onerror = function(message, source, lineno, colno, error) {
 };
 
 window.addEventListener('unhandledrejection', function(event) {
-  console.error('未处理的 Promise 错误:', event.reason);
+  console.error('未处的 Promise 错误:', event.reason);
   showError(`Promise 错误: ${event.reason.message || '未知错误'}`);
 });
 
@@ -240,19 +254,19 @@ function filterTrends(searchTerm) {
 
 // 修改生成趋势 HTML 的函数
 function generateTrendHTML(trend) {
-  // 构建 Google Trends 搜索链接
   const trendsUrl = `https://trends.google.com/trends/explore?geo=${trend.region || 'US'}&q=${encodeURIComponent(trend.title.query)}`;
   
   return `
     <div class="trend-item">
       <div class="trend-header">
-        <div class="trend-source">
+        <div class="trend-meta">
           <span class="platform-tag">${trend.platform || 'Google Trends'}</span>
           <span class="region-tag">${trend.region || 'US'}</span>
+          <span class="category-tag ${trend.category}">${trend.category || '其他'}</span>
         </div>
         <div class="trend-keyword">
           <span class="keyword-text">${trend.title.query}</span>
-          <a href="${trendsUrl}" target="_blank" class="trend-link" title="在 Google Trends 中查看">
+          <a href="${trendsUrl}" target="_blank" class="trend-link">
             <svg class="icon" viewBox="0 0 24 24" width="16" height="16">
               <path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
             </svg>
@@ -262,30 +276,36 @@ function generateTrendHTML(trend) {
       </div>
 
       <div class="trend-stats">
-        <div class="trend-time">
-          发布时间: ${formatDate(trend.timestamp)}
+        <div class="stat-item">
+          <div class="stat-label">发布时间</div>
+          <div class="stat-value">${formatDate(trend.timestamp)}</div>
         </div>
-        <div class="trend-traffic">
-          搜索热度: ${trend.formattedTraffic}
-        </div>
-      </div>
-
-      <div class="trend-description">
-        <div class="description-title">关键词解释:</div>
-        <div class="description-content">
-          ${trend.description}
-          <span class="translation">${trend.descriptionTranslation || ''}</span>
+        <div class="stat-item">
+          <div class="stat-label">搜索热度</div>
+          <div class="stat-value highlight">${trend.formattedTraffic}</div>
         </div>
       </div>
 
-      <div class="related-queries">
-        <div class="queries-title">相关搜索:</div>
-        ${trend.relatedQueries.map(q => `
-          <span class="query-tag">
-            ${q.query}
-            <span class="translation">${q.translation || ''}</span>
-          </span>
-        `).join('')}
+      <div class="trend-content">
+        <div class="description">
+          <div class="section-title">关键词解释</div>
+          <div class="description-text">
+            ${trend.description}
+            <span class="translation">${trend.descriptionTranslation || ''}</span>
+          </div>
+        </div>
+
+        <div class="related-queries">
+          <div class="section-title">相关搜索</div>
+          <div class="query-tags">
+            ${trend.relatedQueries.map(q => `
+              <span class="query-tag">
+                <span class="query-text">${q.query}</span>
+                <span class="translation">${q.translation || ''}</span>
+              </span>
+            `).join('')}
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -329,7 +349,33 @@ function exportToCSV() {
 }
 
 function exportToJSON() {
-  const trends = getAllTrends();
-  const json = JSON.stringify(trends, null, 2);
-  downloadFile(json, 'trends.json', 'application/json');
+  if (!window.allTrends) return;
+
+  const jsonData = window.allTrends.map(trend => ({
+    ...trend,
+    // 加 Google Trends 搜索链接
+    trendsUrl: `https://trends.google.com/trends/explore?geo=${trend.region || 'US'}&q=${encodeURIComponent(trend.title.query)}`
+  }));
+
+  const blob = new Blob([JSON.stringify(jsonData, null, 2)], { 
+    type: 'application/json;charset=utf-8;' 
+  });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `google-trends-${formatDateForFilename(new Date())}.json`;
+  a.click();
+  
+  URL.revokeObjectURL(url);
+}
+
+// 修改日期格式化函数，使其更适合文件名
+function formatDateForFilename(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${year}${month}${day}_${hour}${minute}`;
 }
