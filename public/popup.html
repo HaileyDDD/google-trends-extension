@@ -2,26 +2,70 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Google Trends 热词监控</title>
+  <title>Google Trends Monitor</title>
   <link rel="stylesheet" href="popup.css">
+  <script src="js/lib/chart.js"></script>
 </head>
 <body>
   <div id="app">
     <h1>Google Trends 热词</h1>
+    
+    <!-- 查询控制面板 -->
     <div class="control-panel">
-      <button id="fetchButton" class="fetch-btn">获取最新热词</button>
-      <div class="loading-indicator hidden">
-        <span class="spinner"></span>
-        <span>正在获取数据...</span>
+      <div class="query-settings">
+        <select id="platform">
+          <option value="google">Google Trends</option>
+          <option value="tiktok">TikTok Trends</option>
+        </select>
+        <select id="region">
+          <option value="CN">中国</option>
+          <option value="US">美国</option>
+          <option value="GB">英国</option>
+          <option value="JP">日本</option>
+        </select>
+        <select id="timeRange">
+          <option value="1d">最近1天</option>
+          <option value="3d">最近3天</option>
+          <option value="7d">最近7天</option>
+          <option value="30d">最近30天</option>
+          <option value="90d">最近3个月</option>
+        </select>
+      </div>
+      
+      <div class="action-buttons">
+        <button id="fetchButton" class="fetch-btn">获取最新数据</button>
+        <div class="loading-indicator hidden">
+          <div class="spinner"></div>
+          <span>正在获取数据...</span>
+        </div>
       </div>
     </div>
+
+    <!-- 数据统计 -->
+    <div class="trends-summary">
+      <span class="trends-count">共找到 <span id="showAllBtn">0</span> 个热词</span>
+      <button id="exportBtn" class="export-btn">
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+        </svg>
+        导出数据
+      </button>
+    </div>
+
+    <!-- 搜索和过滤 -->
     <div class="filters">
+      <input type="text" id="searchInput" placeholder="搜索关键词...">
       <select id="sortBy">
         <option value="traffic">按流量排序</option>
         <option value="time">按时间排序</option>
       </select>
     </div>
+
+    <!-- 趋势列表 -->
     <div id="trends-list"></div>
+
+    <!-- 错误提示 -->
+    <div id="error-container" class="hidden"></div>
   </div>
   <script src="js/popup.js"></script>
 </body>

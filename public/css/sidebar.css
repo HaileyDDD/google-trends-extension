@@ -1,0 +1,66 @@
+#google-trends-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100vh;
+  background: white;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  z-index: 2147483647;
+  transition: transform 0.3s ease;
+  transform: translateX(100%);
+  border: none;
+}
+
+#google-trends-sidebar.visible {
+  transform: translateX(0);
+}
+
+#google-trends-sidebar iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+#sidebar-close-btn {
+  position: absolute;
+  top: 10px;
+  left: -30px;
+  width: 30px;
+  height: 30px;
+  background: white;
+  border: none;
+  border-radius: 4px 0 0 4px;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #666;
+  z-index: 2147483647;
+}
+
+#sidebar-close-btn:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.sidebar-error {
+  padding: 20px;
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  margin: 10px;
+}
+
+#google-trends-sidebar.error {
+  width: 300px;
+  height: auto;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+} 

@@ -1,45 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Generate Icons</title>
+  <meta charset="UTF-8">
+  <title>Generate Icons</title>
+  <style>
+    canvas {
+      border: 1px solid #ccc;
+      margin: 10px;
+    }
+  </style>
 </head>
 <body>
-    <h1>点击下面的按钮生成图标</h1>
-    <button onclick="generateIcons()">生成图标</button>
-    
-    <canvas id="canvas16" width="16" height="16" style="border:1px solid #000; margin:10px;"></canvas>
-    <canvas id="canvas48" width="48" height="48" style="border:1px solid #000; margin:10px;"></canvas>
-    <canvas id="canvas128" width="128" height="128" style="border:1px solid #000; margin:10px;"></canvas>
-    
-    <script>
-        function generateIcons() {
-            [16, 48, 128].forEach(generateIcon);
-        }
+  <div id="icons"></div>
+  <script>
+    const sizes = [16, 48, 128];
+    const colors = {
+      primary: '#1a73e8',
+      secondary: '#34a853'
+    };
 
-        function generateIcon(size) {
-            const canvas = document.getElementById(`canvas${size}`);
-            const ctx = canvas.getContext('2d');
-            
-            // 清空画布
-            ctx.clearRect(0, 0, size, size);
-            
-            // 背景
-            ctx.fillStyle = '#1a73e8';
-            ctx.fillRect(0, 0, size, size);
-            
-            // 文字
-            ctx.fillStyle = 'white';
-            ctx.font = `bold ${size/2}px Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('G', size/2, size/2);
-            
-            // 下载
-            const link = document.createElement('a');
-            link.download = `icon${size}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        }
-    </script>
+    function generateIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      
+      // 背景
+      ctx.fillStyle = colors.primary;
+      ctx.beginPath();
+      ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 趋势线
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = size/8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(size*0.2, size*0.8);
+      ctx.lineTo(size*0.4, size*0.6);
+      ctx.lineTo(size*0.6, size*0.7);
+      ctx.lineTo(size*0.8, size*0.3);
+      ctx.stroke();
+      
+      // 添加到页面
+      document.getElementById('icons').appendChild(canvas);
+      
+      // 下载链接
+      const link = document.createElement('a');
+      link.download = `icon${size}.png`;
+      link.href = canvas.toDataURL();
+      link.textContent = `Download ${size}x${size}`;
+      document.getElementById('icons').appendChild(link);
+      document.getElementById('icons').appendChild(document.createElement('br'));
+    }
+
+    // 生成所有尺寸的图标
+    sizes.forEach(generateIcon);
+  </script>
 </body>
 </html> 
