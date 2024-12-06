@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate Icons</title>
+</head>
+<body>
+    <h1>点击下面的按钮生成图标</h1>
+    <button onclick="generateIcons()">生成图标</button>
+    
+    <canvas id="canvas16" width="16" height="16" style="border:1px solid #000; margin:10px;"></canvas>
+    <canvas id="canvas48" width="48" height="48" style="border:1px solid #000; margin:10px;"></canvas>
+    <canvas id="canvas128" width="128" height="128" style="border:1px solid #000; margin:10px;"></canvas>
+    
+    <script>
+        function generateIcons() {
+            [16, 48, 128].forEach(generateIcon);
+        }
+
+        function generateIcon(size) {
+            const canvas = document.getElementById(`canvas${size}`);
+            const ctx = canvas.getContext('2d');
+            
+            // 清空画布
+            ctx.clearRect(0, 0, size, size);
+            
+            // 背景
+            ctx.fillStyle = '#1a73e8';
+            ctx.fillRect(0, 0, size, size);
+            
+            // 文字
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size/2}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('G', size/2, size/2);
+            
+            // 下载
+            const link = document.createElement('a');
+            link.download = `icon${size}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html> 

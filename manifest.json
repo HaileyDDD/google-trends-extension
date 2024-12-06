@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Google Trends Monitor",
+  "version": "1.1",
+  "description": "监控 Google Trends 热门搜索词",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://trends.google.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "public/popup.html"
+  },
+  "web_accessible_resources": [{
+    "resources": ["public/icons/*"],
+    "matches": ["<all_urls>"]
+  }],
+  "icons": {
+    "16": "public/icons/icon16.png",
+    "48": "public/icons/icon48.png",
+    "128": "public/icons/icon128.png"
+  }
+} 

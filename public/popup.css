@@ -1,0 +1,103 @@
+body {
+  width: 400px;
+  padding: 16px;
+  font-family: Arial, sans-serif;
+}
+
+.trend-item {
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.trend-source {
+  color: #666;
+  font-size: 0.9em;
+  margin-bottom: 8px;
+}
+
+.trend-keyword {
+  font-weight: bold;
+  color: #1a73e8;
+  font-size: 1.1em;
+  margin-bottom: 8px;
+}
+
+.trend-time {
+  color: #666;
+  font-size: 0.9em;
+  margin-bottom: 8px;
+}
+
+.trend-traffic {
+  color: #34a853;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.trend-description {
+  color: #444;
+  font-size: 0.9em;
+  line-height: 1.4;
+  border-top: 1px solid #eee;
+  padding-top: 8px;
+}
+
+#last-update {
+  margin-top: 16px;
+  color: #666;
+  font-size: 0.8em;
+}
+
+.control-panel {
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fetch-btn {
+  background: #1a73e8;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.fetch-btn:hover {
+  background: #1557b0;
+}
+
+.fetch-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+}
+
+.loading-indicator.hidden {
+  display: none;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #1a73e8;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+} 
