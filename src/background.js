@@ -31,7 +31,7 @@ const mockDataSets = {
         description: "国家公务员考试成绩查询"
       },
       {
-        title: { query: "英雄" },
+        title: { query: "���雄" },
         formattedTraffic: "250,000+",
         relatedQueries: ["技能绍", "攻略", "出装"],
         description: "手游新角色发布"
@@ -194,7 +194,7 @@ const tiktokDataSets = {
       {
         title: { query: "#摸鱼日常" },
         formattedTraffic: "1.2M",
-        relatedQueries: ["职场", "日常", "搞笑"],
+        relatedQueries: ["��场", "日常", "搞笑"],
         description: "分享办公室生活的有趣瞬间"
       },
       {
@@ -677,40 +677,40 @@ async function processGoogleTrendsData(trend, region) {
   };
 }
 
-// 添加数据验证函数
+// 修改数据验证函数
 async function validateTrendsData(trends, region) {
-  // 验证结果数组
   const validationResults = await Promise.all(trends.map(async trend => {
     try {
-      // 1. 直接验证 Google Trends 链接
-      const trendsUrl = `https://trends.google.com/trends/explore?geo=${region}&q=${encodeURIComponent(trend.title.query)}`;
-      const response = await fetch(trendsUrl);
-      const isValidTrend = response.ok;
+      // 基本数据验证
+      const hasTitle = trend.title?.query;
+      const hasTraffic = trend.formattedTraffic;
+      const hasTimestamp = trend.timestamp;
+      const hasDescription = trend.description;
+      
+      // 验证相关内容（放宽条件）
+      const hasRelatedContent = trend.relatedQueries?.length > 0 || trend.articles?.length > 0;
+      
+      // 验证时间戳（放宽到7天内）
+      const isRecentTimestamp = (Date.now() - trend.timestamp) < 7 * 24 * 60 * 60 * 1000;
 
-      // 2. 验证搜索量
-      const searchVolume = parseInt(trend.formattedTraffic.replace(/[^0-9]/g, ''));
-      const hasReasonableVolume = searchVolume > 0 && searchVolume < 10000000;
-
-      // 3. 验证时间戳
-      const isRecentTimestamp = (Date.now() - trend.timestamp) < 24 * 60 * 60 * 1000; // 24小时内
-
-      // 4. 验证相关内容
-      const hasRelatedContent = trend.relatedQueries.length > 0 || trend.articles.length > 0;
+      const isValid = hasTitle && hasTraffic && hasTimestamp && hasDescription;
 
       return {
         keyword: trend.title.query,
-        isValid: isValidTrend && hasReasonableVolume && isRecentTimestamp && hasRelatedContent,
+        isValid,
         validationDetails: {
-          validTrend: isValidTrend,
-          reasonableVolume: hasReasonableVolume,
-          recentTimestamp: isRecentTimestamp,
-          hasRelatedContent
+          hasTitle,
+          hasTraffic,
+          hasTimestamp,
+          hasDescription,
+          hasRelatedContent,
+          isRecentTimestamp
         }
       };
     } catch (error) {
-      console.error(`验证失败 (${trend.title.query}):`, error);
+      console.error(`验证失败 (${trend.title?.query}):`, error);
       return {
-        keyword: trend.title.query,
+        keyword: trend.title?.query,
         isValid: false,
         error: error.message
       };

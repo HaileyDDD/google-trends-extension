@@ -23,13 +23,15 @@ function initializeUI() {
   const sortSelect = document.getElementById('sortBy');
   const exportCsvBtn = document.getElementById('exportCsvBtn');
   const exportJsonBtn = document.getElementById('exportJsonBtn');
+  const showAllBtn = document.getElementById('showAllBtn');
   
   // 添加事件监听器
   fetchButton?.addEventListener('click', handleFetchClick);
-  searchInput?.addEventListener('input', handleSearch);
-  sortSelect?.addEventListener('change', handleSort);
+  searchInput?.addEventListener('input', safeHandleSearch);
+  sortSelect?.addEventListener('change', safeHandleSort);
   exportCsvBtn?.addEventListener('click', exportKeywordData);
   exportJsonBtn?.addEventListener('click', exportToJSON);
+  showAllBtn?.addEventListener('click', safeShowFullList);
 }
 
 // 处理获取数据的点击事件
@@ -74,7 +76,7 @@ async function loadSavedTrends() {
     const errorContainer = document.getElementById('error-container');
 
     if (!trendsList || !showAllBtn) {
-      throw new Error('找不到必要的DOM');
+      throw new Error('找��到必要的DOM');
     }
 
     // 清除错误提示
@@ -113,7 +115,7 @@ function formatDate(timestamp) {
 }
 
 function formatTraffic(traffic) {
-  // 将流量数据转换为"xx万+"格式
+  // 将流���据转换为"xx万+"格式
   const num = parseInt(traffic.replace(/[^0-9]/g, ''));
   return `${Math.round(num / 10000)}万+`;
 }
@@ -311,10 +313,29 @@ function generateTrendHTML(trend) {
   `;
 }
 
-// 显示完整列表的函数
+// 修改显示完整列表的函数
 function showFullList() {
-  const dialog = document.getElementById('fullListDialog');
-  const fullList = document.getElementById('fullTrendsList');
+  // 创建对话框元素（如果不存在）
+  let dialog = document.getElementById('fullListDialog');
+  if (!dialog) {
+    dialog = document.createElement('div');
+    dialog.id = 'fullListDialog';
+    dialog.className = 'dialog-overlay';
+    
+    dialog.innerHTML = `
+      <div class="dialog-content">
+        <div class="dialog-header">
+          <h2>所有趋势</h2>
+          <button class="close-btn">&times;</button>
+        </div>
+        <div id="fullTrendsList" class="dialog-body"></div>
+      </div>
+    `;
+    
+    document.body.appendChild(dialog);
+  }
+
+  const fullList = dialog.querySelector('#fullTrendsList');
   
   if (window.allTrends) {
     fullList.innerHTML = window.allTrends.map(trend => generateTrendHTML(trend)).join('');
@@ -379,3 +400,78 @@ function formatDateForFilename(date) {
   const minute = String(date.getMinutes()).padStart(2, '0');
   return `${year}${month}${day}_${hour}${minute}`;
 }
+
+// 添加处理搜索的函数
+function handleSearch(e) {
+  const searchTerm = e.target.value.toLowerCase();
+  const trends = window.allTrends || [];
+  
+  // 过滤趋势
+  const filteredTrends = trends.filter(trend => {
+    const searchText = [
+      trend.title.query,
+      trend.title.translation,
+      trend.description,
+      trend.descriptionTranslation,
+      trend.category,
+      ...trend.relatedQueries.map(q => q.query),
+      ...trend.relatedQueries.map(q => q.translation)
+    ].join(' ').toLowerCase();
+    
+    return searchText.includes(searchTerm);
+  });
+
+  // 更新显示
+  const trendsList = document.getElementById('trends-list');
+  trendsList.innerHTML = filteredTrends
+    .slice(0, 3)
+    .map(trend => generateTrendHTML(trend))
+    .join('');
+  
+  // 更新计数
+  const showAllBtn = document.getElementById('showAllBtn');
+  if (showAllBtn) {
+    showAllBtn.textContent = filteredTrends.length;
+  }
+}
+
+// 添加处理排序的函数
+function handleSort(e) {
+  const sortBy = e.target.value;
+  const trends = window.allTrends || [];
+  
+  // 排序趋势
+  const sortedTrends = [...trends].sort((a, b) => {
+    if (sortBy === 'traffic') {
+      const trafficA = parseInt(a.formattedTraffic.replace(/[^0-9]/g, ''));
+      const trafficB = parseInt(b.formattedTraffic.replace(/[^0-9]/g, ''));
+      return trafficB - trafficA;
+    } else {
+      return b.timestamp - a.timestamp;
+    }
+  });
+
+  // 更新显示
+  const trendsList = document.getElementById('trends-list');
+  trendsList.innerHTML = sortedTrends
+    .slice(0, 3)
+    .map(trend => generateTrendHTML(trend))
+    .join('');
+}
+
+// 添加错误边界处理
+function wrapWithErrorBoundary(fn) {
+  return async (...args) => {
+    try {
+      await fn(...args);
+    } catch (error) {
+      console.error('操作失败:', error);
+      showError(error.message || '操作失败，请稍后重试');
+    }
+  };
+}
+
+// 包装事件处理函数
+const safeHandleSearch = wrapWithErrorBoundary(handleSearch);
+const safeHandleSort = wrapWithErrorBoundary(handleSort);
+const safeShowFullList = wrapWithErrorBoundary(showFullList);
