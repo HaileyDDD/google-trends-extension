@@ -17,11 +17,27 @@
           <option value="google">Google Trends</option>
           <option value="tiktok">TikTok Trends</option>
         </select>
-        <select id="region">
-          <option value="CN">中国</option>
-          <option value="US">美国</option>
-          <option value="GB">英国</option>
-          <option value="JP">日本</option>
+        <select id="region" class="region-select">
+          <optgroup label="主要地区">
+            <option value="US">美国</option>
+            <option value="EU">欧洲</option>
+          </optgroup>
+          <optgroup label="欧洲国家">
+            <option value="GB">英国</option>
+            <option value="DE">德国</option>
+            <option value="FR">法国</option>
+            <option value="IT">意大利</option>
+            <option value="ES">西班牙</option>
+            <option value="NL">荷兰</option>
+            <option value="SE">瑞典</option>
+            <option value="CH">瑞士</option>
+            <option value="PL">波兰</option>
+            <option value="NO">挪威</option>
+          </optgroup>
+          <optgroup label="其他地区">
+            <option value="CN">中国</option>
+            <option value="JP">日本</option>
+          </optgroup>
         </select>
         <select id="timeRange">
           <option value="1d">最近1天</option>
@@ -30,6 +46,19 @@
           <option value="30d">最近30天</option>
           <option value="90d">最近3个月</option>
         </select>
+        <div class="category-filter">
+          <select id="mainCategory">
+            <option value="">所有主类目</option>
+            <option value="体育">体育</option>
+            <option value="娱乐">娱乐</option>
+            <option value="科技">科技</option>
+            <option value="财经">财经</option>
+            <option value="社会">社会</option>
+          </select>
+          <select id="subCategory" disabled>
+            <option value="">所有子类目</option>
+          </select>
+        </div>
       </div>
       
       <div class="action-buttons">
@@ -44,12 +73,20 @@
     <!-- 数据统计 -->
     <div class="trends-summary">
       <span class="trends-count">共找到 <span id="showAllBtn">0</span> 个热词</span>
-      <button id="exportBtn" class="export-btn">
-        <svg class="icon" viewBox="0 0 24 24">
-          <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-        </svg>
-        导出数据
-      </button>
+      <div class="export-buttons">
+        <button id="exportCsvBtn" class="export-btn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+          </svg>
+          导出 CSV
+        </button>
+        <button id="exportJsonBtn" class="export-btn">
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+          </svg>
+          导出 JSON
+        </button>
+      </div>
     </div>
 
     <!-- 搜索和过滤 -->

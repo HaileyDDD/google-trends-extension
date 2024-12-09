@@ -32,6 +32,48 @@ function initializeUI() {
   exportCsvBtn?.addEventListener('click', exportKeywordData);
   exportJsonBtn?.addEventListener('click', exportToJSON);
   showAllBtn?.addEventListener('click', safeShowFullList);
+  
+  // 初始化类目筛选
+  initializeCategoryFilter();
+}
+
+// 添加类目配置
+const CATEGORY_CONFIG = {
+  '体育': ['足球', '篮球', '其他体育'],
+  '娱乐': ['电影', '电视', '音乐', '游戏'],
+  '科技': ['手机', '电脑', 'AI'],
+  '财经': ['股市', '加密货币', '房地产'],
+  '社会': ['政治', '教育', '医疗']
+};
+
+// 初始化类目选择器
+function initializeCategoryFilter() {
+  const mainCategory = document.getElementById('mainCategory');
+  const subCategory = document.getElementById('subCategory');
+
+  // 监听主类目变化
+  mainCategory.addEventListener('change', (e) => {
+    const selectedMain = e.target.value;
+    updateSubCategories(selectedMain);
+  });
+}
+
+// 更新子类目选项
+function updateSubCategories(mainCategory) {
+  const subCategory = document.getElementById('subCategory');
+  subCategory.innerHTML = '<option value="">所有子类目</option>';
+  
+  if (mainCategory && CATEGORY_CONFIG[mainCategory]) {
+    CATEGORY_CONFIG[mainCategory].forEach(sub => {
+      const option = document.createElement('option');
+      option.value = sub;
+      option.textContent = sub;
+      subCategory.appendChild(option);
+    });
+    subCategory.disabled = false;
+  } else {
+    subCategory.disabled = true;
+  }
 }
 
 // 处理获取数据的点击事件
@@ -42,7 +84,10 @@ async function handleFetchClick() {
     const params = {
       platform: document.getElementById('platform').value,
       region: document.getElementById('region').value,
-      timeRange: document.getElementById('timeRange').value
+      timeRange: document.getElementById('timeRange').value,
+      // 添加类目筛选参数
+      mainCategory: document.getElementById('mainCategory').value,
+      subCategory: document.getElementById('subCategory').value
     };
     
     console.log('发送获取趋势请求:', params);
@@ -53,6 +98,32 @@ async function handleFetchClick() {
     });
     
     if (response.success) {
+      // 根据类目筛选数据
+      if (response.data.length > 0) {
+        let filteredData = response.data;
+        
+        if (params.mainCategory) {
+          filteredData = filteredData.filter(trend => 
+            trend.categoryPath && trend.categoryPath[0] === params.mainCategory
+          );
+          
+          if (params.subCategory) {
+            filteredData = filteredData.filter(trend => 
+              trend.categoryPath && trend.categoryPath[1] === params.subCategory
+            );
+          }
+        }
+        
+        // 更新存储的数据
+        await chrome.storage.local.set({ 
+          keywords: filteredData.reduce((acc, trend) => {
+            acc[trend.title.query] = trend;
+            return acc;
+          }, {}),
+          lastUpdate: new Date().toISOString()
+        });
+      }
+      
       await loadSavedTrends();
     } else {
       throw new Error(response.error || '获取数据失败');
@@ -76,7 +147,7 @@ async function loadSavedTrends() {
     const errorContainer = document.getElementById('error-container');
 
     if (!trendsList || !showAllBtn) {
-      throw new Error('找��到必要的DOM');
+      throw new Error('找不到必要的DOM');
     }
 
     // 清除错误提示
@@ -115,7 +186,7 @@ function formatDate(timestamp) {
 }
 
 function formatTraffic(traffic) {
-  // 将流���据转换为"xx万+"格式
+  // 将流量数据转换为"xx万+"格式
   const num = parseInt(traffic.replace(/[^0-9]/g, ''));
   return `${Math.round(num / 10000)}万+`;
 }
@@ -254,9 +325,28 @@ function filterTrends(searchTerm) {
   });
 }
 
-// 修改生成趋势 HTML 的函数
+// 添加安全的数据获取函数
+function getSafeValue(obj, path, defaultValue = '') {
+  try {
+    return path.split('.').reduce((acc, part) => acc?.[part], obj) || defaultValue;
+  } catch (error) {
+    console.warn(`Error getting value for path ${path}:`, error);
+    return defaultValue;
+  }
+}
+
+// 修改 generateTrendHTML 函数使用安全的数据获取
 function generateTrendHTML(trend) {
-  const trendsUrl = `https://trends.google.com/trends/explore?geo=${trend.region || 'US'}&q=${encodeURIComponent(trend.title.query)}`;
+  if (!trend || typeof trend !== 'object') {
+    console.error('Invalid trend data:', trend);
+    return '';
+  }
+
+  const trendsUrl = `https://trends.google.com/trends/explore?geo=${getSafeValue(trend, 'region', 'US')}&q=${encodeURIComponent(getSafeValue(trend, 'title.query'))}`;
+  
+  const categoryTags = Array.isArray(trend.categoryPath) ? trend.categoryPath.map((cat, index) => `
+    <span class="category-tag level-${index}">${cat}</span>
+  `).join('') : `<span class="category-tag">${getSafeValue(trend, 'category', '其他')}</span>`;
   
   return `
     <div class="trend-item">
@@ -264,7 +354,9 @@ function generateTrendHTML(trend) {
         <div class="trend-meta">
           <span class="platform-tag">${trend.platform || 'Google Trends'}</span>
           <span class="region-tag">${trend.region || 'US'}</span>
-          <span class="category-tag ${trend.category}">${trend.category || '其他'}</span>
+          <div class="category-tags">
+            ${categoryTags}
+          </div>
         </div>
         <div class="trend-keyword">
           <span class="keyword-text">${trend.title.query}</span>
